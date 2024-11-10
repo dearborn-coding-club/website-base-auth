@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/caarlos0/env/v11"
 	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
 )
@@ -15,17 +16,24 @@ type LoginRequest struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 }
+type Config struct {
+	Password   string `env:"SUPABASE_POSTGRESQL_PASSWORD,required"`
+	HmacSecret string `env:"HMAC_SECRET,required"`
+}
 
 func main() {
 	// Handler function for the root path ("/")
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		var cfg Config
+		err := env.Parse(&cfg)
+
 		var loginRequest LoginRequest
-		err := json.NewDecoder(r.Body).Decode(&loginRequest)
+		err = json.NewDecoder(r.Body).Decode(&loginRequest)
 		if err != nil {
 			http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
 			return
 		}
-		connStr := "postgresql://postgres.lnwnzuvjzjpmixenztyg:[password]@fly-0-ewr.pooler.supabase.com:6543/postgres"
+		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
 		rows, err := db.Query("SELECT * FROM AUTH_USER WHERE username = $1 AND password=$2", loginRequest.Username, loginRequest.Password)
 		if err != nil {
