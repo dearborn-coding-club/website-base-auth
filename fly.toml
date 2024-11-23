@@ -3,7 +3,7 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'auth-lingering-breeze-695'
+app = 'website-base-auth'
 primary_region = 'ewr'
 
 [build]
