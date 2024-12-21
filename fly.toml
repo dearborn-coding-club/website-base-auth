@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for auth-lingering-breeze-695 on 2024-11-09T23:35:17-05:00
+# fly.toml app configuration file generated for website-base-auth on 2024-11-23T12:25:54-05:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -7,8 +7,6 @@ app = 'website-base-auth'
 primary_region = 'ewr'
 
 [build]
-  [build.args]
-    GO_VERSION = '1.21.0'
 
 [env]
   PORT = '8080'

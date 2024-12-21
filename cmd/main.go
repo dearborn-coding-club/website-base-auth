@@ -68,12 +68,14 @@ func main() {
 			"dateJoined":  dateJoined,
 			"nbf":         time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
 		})
+
 		tokenString, err := token.SignedString([]byte("potatosecret"))
 		if err != nil {
 			http.Error(w, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"token": "%s"}`, tokenString)
 	})
