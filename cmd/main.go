@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -44,7 +45,7 @@ func main() {
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		var cfg Config
 		err := env.Parse(&cfg)
-
+		refreshToken, err := GenerateRefreshToken()
 		var loginRequest LoginRequest
 		err = json.NewDecoder(r.Body).Decode(&loginRequest)
 		if err != nil {
@@ -53,7 +54,17 @@ func main() {
 		}
 		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+			log.Fatalf("Unable to execute query: %v\n", err)
+		}
 		rows, err := db.Query("SELECT * FROM AUTH_USER WHERE username = $1 AND password=$2", loginRequest.Username, loginRequest.Password)
+
+		if err != nil {
+			log.Fatalf("Unable to execute query: %v\n", err)
+		}
+		query := `INSERT INTO core_refreshtoken (token) VALUES ($1)`
+		_, err = db.Exec(query, refreshToken)
+
 		if err != nil {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -92,7 +103,6 @@ func main() {
 			http.Error(w, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		refreshToken, err := GenerateRefreshToken()
 		if err != nil {
 			http.Error(w, "Error generating refresh token: "+err.Error(), http.StatusInternalServerError)
 			return
