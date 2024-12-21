@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rand"
 	"database/sql"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -19,6 +21,22 @@ type LoginRequest struct {
 type Config struct {
 	Password   string `env:"SUPABASE_POSTGRESQL_PASSWORD,required"`
 	HmacSecret string `env:"HMAC_SECRET,required"`
+}
+
+func GenerateRefreshToken() (string, error) {
+	// Create a byte slice for random data
+	randomBytes := make([]byte, 32) // 32 bytes = 256 bits
+
+	// Fill the slice with random bytes
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
+	}
+
+	// Encode the bytes to a base64 URL-safe string
+	refreshToken := base64.URLEncoding.EncodeToString(randomBytes)
+
+	return refreshToken, nil
 }
 
 func main() {
@@ -74,10 +92,16 @@ func main() {
 			http.Error(w, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		refreshToken, err := GenerateRefreshToken()
+		if err != nil {
+			http.Error(w, "Error generating refresh token: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprintf(w, `{"token": "%s"}`, tokenString)
+		fmt.Fprintf(w, `{"token": "%s", "refresh_token": "%s"}`, tokenString, refreshToken)
+
 	})
 
 	// Start the server listening on port 8080
