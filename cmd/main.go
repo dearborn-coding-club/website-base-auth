@@ -40,9 +40,21 @@ func GenerateRefreshToken() (string, error) {
 	return refreshToken, nil
 }
 
+func handlePreflight(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	// Handler function for the root path ("/")
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			handlePreflight(w, r)
+			return
+		}
 		var cfg Config
 		err := env.Parse(&cfg)
 		refreshToken, err := GenerateRefreshToken()
@@ -108,7 +120,6 @@ func main() {
 			return
 		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"token": "%s", "refresh_token": "%s"}`, tokenString, refreshToken)
 
