@@ -49,6 +49,43 @@ func handlePreflight(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	http.HandleFunc("/validate-token", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			handlePreflight(w, r)
+			return
+		}
+		var cfg Config
+		err := env.Parse(&cfg)
+		if err != nil {
+			http.Error(w, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		tokenString := r.Header.Get("Authorization")
+		if tokenString == "" {
+			http.Error(w, "No token provided", http.StatusUnauthorized)
+			return
+		}
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			return []byte(cfg.HmacSecret), nil
+		})
+		if err != nil {
+			http.Error(w, "Error parsing JWT: "+err.Error(), http.StatusUnauthorized)
+			return
+		}
+		if !token.Valid {
+			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			return
+		}
+		claims, ok := token.Claims.(jwt.MapClaims)
+		if !ok {
+			http.Error(w, "Error parsing claims", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprintf(w, `{"claims": %v}`, claims)
+	})
+
 	// Handler function for the root path ("/")
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
