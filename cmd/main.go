@@ -66,7 +66,7 @@ func main() {
 			return
 		}
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			return []byte(cfg.HmacSecret), nil
+			return []byte("potatosecret"), nil
 		})
 		if err != nil {
 			http.Error(w, "Error parsing JWT: "+err.Error(), http.StatusUnauthorized)
