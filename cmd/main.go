@@ -67,6 +67,9 @@ func main() {
 			http.Error(w, "No token provided", http.StatusUnauthorized)
 			return
 		}
+
+		tokenString = tokenString[7:]
+
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return []byte("potatosecret"), nil
 		})
