@@ -50,6 +50,8 @@ func handlePreflight(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	http.HandleFunc("/validate-token", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
 		if r.Method == http.MethodOptions {
 			handlePreflight(w, r)
 			return
@@ -81,8 +83,7 @@ func main() {
 			http.Error(w, "Error parsing claims", http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
+
 		fmt.Fprintf(w, `{"claims": %v}`, claims)
 	})
 
