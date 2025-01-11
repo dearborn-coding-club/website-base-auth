@@ -24,6 +24,12 @@ type Config struct {
 	HmacSecret string `env:"HMAC_SECRET,required"`
 }
 
+type RegisterRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Email    string `json:"email"`
+}
+
 func GenerateRefreshToken() (string, error) {
 	// Create a byte slice for random data
 	randomBytes := make([]byte, 32) // 32 bytes = 256 bits
@@ -94,6 +100,51 @@ func main() {
 		fmt.Fprintf(w, `{"claims": %v}`, claims)
 	})
 
+	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodOptions {
+			handlePreflight(w, r)
+			return
+		}
+
+		var cfg Config
+		err := env.Parse(&cfg)
+		if err != nil {
+			http.Error(w, "could build config"+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		var registerRequest RegisterRequest
+		err = json.NewDecoder(r.Body).Decode(&registerRequest)
+		if err != nil {
+			http.Error(w, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
+		}
+
+		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
+		db, err := sql.Open("postgres", connStr)
+		if err != nil {
+			http.Error(w, "Error parsing request body: "+err.Error(), http.StatusNotFound)
+			return
+		}
+
+		rows, err := db.Query("SELECT * FROM AUTH_USER WHERE USERNAME = $1", registerRequest.Username)
+
+		if err != nil {
+			http.Error(w, "Error selecting from database: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		if rows.Next() {
+			http.Error(w, "User already exists"+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, err = db.Exec("INSERT INTO AUTH_USER (password, username, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14')", registerRequest.Username, registerRequest.Password, registerRequest.Email)
+
+		if err != nil {
+			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+	})
+
 	// Handler function for the root path ("/")
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodOptions {
@@ -106,7 +157,7 @@ func main() {
 		var loginRequest LoginRequest
 		err = json.NewDecoder(r.Body).Decode(&loginRequest)
 		if err != nil {
-			http.Error(w, "Error parsing request body: "+err.Error(), http.StatusBadRequest)
+			http.Error(w, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
@@ -168,7 +219,6 @@ func main() {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintf(w, `{"token": "%s", "refresh_token": "%s"}`, tokenString, refreshToken)
-
 	})
 
 	// Start the server listening on port 8080
