@@ -143,6 +143,9 @@ func main() {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, "Registered.")
 	})
 
 	// Handler function for the root path ("/")
