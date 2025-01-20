@@ -168,7 +168,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
 		}
-		rows, err := db.Query("SELECT * FROM AUTH_USER WHERE username = $1 AND password=$2", loginRequest.Username, loginRequest.Password)
+		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE username = $1 AND password=$2", loginRequest.Username, loginRequest.Password)
 
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
