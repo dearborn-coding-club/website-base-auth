@@ -186,9 +186,9 @@ func main() {
 			return
 		}
 
-		var id, username, password, lastLogin, isSuperUser, firstName, lastName, email, isStaff, isActive, dateJoined string
+		var id, username, password, lastLogin, isSuperUser, firstName, lastName, email, isStaff, isActive, dateJoined, profile_id, birthdate, bio string
 
-		err = rows.Scan(&id, &password, &lastLogin, &isSuperUser, &username, &firstName, &lastName, &email, &isStaff, &isActive, &dateJoined)
+		err = rows.Scan(&id, &password, &lastLogin, &isSuperUser, &username, &firstName, &lastName, &email, &isStaff, &isActive, &dateJoined, &bio, &birthdate, &profile_id)
 		if err != nil {
 			http.Error(w, "Error scanning the database: "+err.Error(), http.StatusInternalServerError)
 			return
