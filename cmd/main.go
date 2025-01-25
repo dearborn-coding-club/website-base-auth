@@ -137,7 +137,7 @@ func main() {
 			return
 		}
 
-		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (password, username, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', 1, '2017-03-14')", registerRequest.Username, registerRequest.Password, registerRequest.Email)
+		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (username, password, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', 1, '2017-03-14')", registerRequest.Username, registerRequest.Password, registerRequest.Email)
 
 		if err != nil {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
