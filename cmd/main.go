@@ -145,6 +145,7 @@ func main() {
 		}
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
 		fmt.Fprint(w, "{ 'generated': true }")
 	})
 
