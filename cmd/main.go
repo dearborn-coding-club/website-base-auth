@@ -13,6 +13,7 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/lib/pq"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginRequest struct {
@@ -155,8 +156,15 @@ func main() {
 			return
 		}
 
-		// Insert the user into the database.
-		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (username, password, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', 1, '2017-03-14')", registerRequest.Username, registerRequest.Password, registerRequest.Email)
+		hashedPassword, err := HashPassword(registerRequest.Password)
+
+		if err != nil {
+			http.Error(w, "Error hashing password: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (username, password, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', 1, '2017-03-14')", registerRequest.Username, hashedPassword, registerRequest.Email)
+
 		if err != nil {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
@@ -206,7 +214,7 @@ func main() {
 		defer db.Close()
 
 		// Query the database for the user.
-		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE username = $1 AND password=$2", loginRequest.Username, loginRequest.Password)
+		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE username = $1", loginRequest.Username)
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
 		}
@@ -234,6 +242,21 @@ func main() {
 		}
 		defer rows.Close()
 
+		// Check if the provided password hash matches what is in the database.
+		validPassword := CheckPasswordHash(loginRequest.Password, password)
+		if !validPassword {
+			http.Error(w, "Wrong password", http.StatusNotFound)
+			return
+		}
+
+		// Insert the refresh token into the database.
+		query = `INSERT INTO core_refreshtoken (token) VALUES ($1)`
+		_, err = db.Exec(query, refreshToken)
+		if err != nil {
+			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
 		// Generate a JWT with the user claims.
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"id":          id,
@@ -257,10 +280,22 @@ func main() {
 		}
 
 		setBaseHeaders(w)
+
 		fmt.Fprintf(w, `{"token": "%s", "refresh_token": "%s"}`, tokenString, refreshToken)
 	})
 
 	// Start the server listening on port 8080
 	fmt.Println("Server running on port 8080")
 	http.ListenAndServe(":8080", nil)
+}
+
+// Note: Bcrypt will not work on any passwords longer than 72 bytes (chars)
+func HashPassword(password string) (string, error) {
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
+}
+
+func CheckPasswordHash(password, hash string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
