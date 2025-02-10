@@ -49,38 +49,46 @@ func GenerateRefreshToken() (string, error) {
 
 func handlePreflight(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	w.Header().Set("Access-Control-Max-Age", "86400")
 	w.WriteHeader(http.StatusOK)
 }
 
+func setBaseHeaders(w http.ResponseWriter) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+}
+
 func main() {
 	http.HandleFunc("/validate-token", func(w http.ResponseWriter, r *http.Request) {
+		// During CORS preflight, the browser sends an OPTIONS request to check if the server allows the request.
+		// Handle these responses early in function.
 		if r.Method == http.MethodOptions {
 			handlePreflight(w, r)
 			return
 		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-		if r.Method == http.MethodOptions {
-			handlePreflight(w, r)
-			return
-		}
+
+		// Parse the environment variables into a Config struct.
 		var cfg Config
 		err := env.Parse(&cfg)
 		if err != nil {
 			http.Error(w, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// Retrieve the token from the Authorization header of the request.
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
 			http.Error(w, "No token provided", http.StatusUnauthorized)
 			return
 		}
 
+		// The token generally starts with "Authorization", so trim that part before processing.
 		tokenString = tokenString[7:]
 
+		// Parse the token and validate it is signed with the HMAC secret.
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 			return []byte("potatosecret"), nil
 		})
@@ -98,27 +106,36 @@ func main() {
 			return
 		}
 
+		// Set headers of the response.
+		setBaseHeaders(w)
+
 		fmt.Fprintf(w, `{"claims": %v}`, claims)
 	})
 
 	http.HandleFunc("/register", func(w http.ResponseWriter, r *http.Request) {
+		// During CORS preflight, the browser sends an OPTIONS request to check if the server allows the request.
+		// Handle these responses early in function.
 		if r.Method == http.MethodOptions {
 			handlePreflight(w, r)
 			return
 		}
 
+		// Parse the environment variables into a Config struct.
 		var cfg Config
 		err := env.Parse(&cfg)
 		if err != nil {
 			http.Error(w, "could build config"+err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// Parse the request body into a RegisterRequest struct.
 		var registerRequest RegisterRequest
 		err = json.NewDecoder(r.Body).Decode(&registerRequest)
 		if err != nil {
 			http.Error(w, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
 		}
 
+		// Create a database connection string using the Supabase environment variables.
 		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
@@ -126,13 +143,14 @@ func main() {
 			return
 		}
 
+		// Check if the user already exists in the database.
 		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE USERNAME = $1", registerRequest.Username)
-
 		if err != nil {
 			http.Error(w, "Error selecting from database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+		// If the user already exists, return an error.
 		if rows.Next() {
 			http.Error(w, "User already exists"+err.Error(), http.StatusInternalServerError)
 			return
@@ -151,66 +169,95 @@ func main() {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
+
+		setBaseHeaders(w)
 		fmt.Fprint(w, `{ "generated": true }`)
 	})
 
-	// Handler function for the root path ("/")
 	http.HandleFunc("/login", func(w http.ResponseWriter, r *http.Request) {
+		// During CORS preflight, the browser sends an OPTIONS request to check if the server allows the request.
+		// Handle these responses early in function.
 		if r.Method == http.MethodOptions {
 			handlePreflight(w, r)
 			return
 		}
+
+		// Parse the environment variables into a Config struct.
 		var cfg Config
 		err := env.Parse(&cfg)
+		if err != nil {
+			http.Error(w, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Generate a refresh token.
 		refreshToken, err := GenerateRefreshToken()
+		if err != nil {
+			http.Error(w, "Error generating refresh token: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Parse the request body into a LoginRequest struct.
 		var loginRequest LoginRequest
 		err = json.NewDecoder(r.Body).Decode(&loginRequest)
 		if err != nil {
 			http.Error(w, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		// Create a database connection string using the Supabase environment variables.
 		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
 		}
-		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE username = $1", loginRequest.Username)
+		defer db.Close()
 
+		// Query the database for the user.
+		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE username = $1", loginRequest.Username)
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
 		}
 
+		// If the user does not exist, return an error.
 		if !rows.Next() {
 			http.Error(w, "Wrong username or password", http.StatusNotFound)
 			return
 		}
 
-		var id, username, password, lastLogin, isSuperUser, firstName, lastName, email, isStaff, isActive, dateJoined, profile_id, birthdate, bio string
+		// Insert the refresh token into the database.
+		query := `INSERT INTO core_refreshtoken (token) VALUES ($1)`
+		_, err = db.Exec(query, refreshToken)
+		if err != nil {
+			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
+		// Parse the database response into a User struct.
+		var id, username, password, lastLogin, isSuperUser, firstName, lastName, email, isStaff, isActive, dateJoined, profile_id, birthdate, bio string
 		err = rows.Scan(&id, &password, &lastLogin, &isSuperUser, &username, &firstName, &lastName, &email, &isStaff, &isActive, &dateJoined, &bio, &birthdate, &profile_id)
 		if err != nil {
 			http.Error(w, "Error scanning the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
-		validPassword := CheckPasswordHash(loginRequest.Password, password)
 
+		// Check if the provided password hash matches what is in the database.
+		validPassword := CheckPasswordHash(loginRequest.Password, password)
 		if !validPassword {
 			http.Error(w, "Wrong password", http.StatusNotFound)
 			return
 		}
 
-		query := `INSERT INTO core_refreshtoken (token) VALUES ($1)`
+		// Insert the refresh token into the database.
+		query = `INSERT INTO core_refreshtoken (token) VALUES ($1)`
 		_, err = db.Exec(query, refreshToken)
-
 		if err != nil {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
+		// Generate a JWT with the user claims.
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"id":          id,
 			"username":    username,
@@ -225,23 +272,20 @@ func main() {
 			"nbf":         time.Date(2015, 10, 10, 12, 0, 0, 0, time.UTC).Unix(),
 		})
 
+		// Sign the JWT with the HMAC secret and convert it to a string.
 		tokenString, err := token.SignedString([]byte("potatosecret"))
 		if err != nil {
 			http.Error(w, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
-		if err != nil {
-			http.Error(w, "Error generating refresh token: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
 
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Content-Type", "application/json")
+		setBaseHeaders(w)
+
 		fmt.Fprintf(w, `{"token": "%s", "refresh_token": "%s"}`, tokenString, refreshToken)
 	})
 
 	// Start the server listening on port 8080
-	fmt.Println("Server listening on http://localhost:8080/")
+	fmt.Println("Server running on port 8080")
 	http.ListenAndServe(":8080", nil)
 }
 
