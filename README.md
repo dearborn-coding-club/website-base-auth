@@ -3,6 +3,29 @@
 
 This repo contains a Go server that is used for authentication on the dearborncodingclub.com website.
 
+### Set Up Environment Variables
+Copy the sample `.env` file and configure your environment variables:
+
+```bash
+cp .env.example .env
+```
+Modify `.env` as needed:
+
+```bash
+export SUPABASE_POSTGRESQL_PASSWORD=password
+export HMAC_SECRET=your_hmac_secret_here
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=postgres
+export DB_USER=postgres
+```
+
+Run source to set the env for the terminal
+
+```bash
+source .env
+```
+
 ### Getting started
 1. To run the server, ensure that you have `Go` installed locally on your system.
 2. Run `go mod vendor` from the root director.
