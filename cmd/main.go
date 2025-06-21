@@ -66,6 +66,15 @@ func setBaseHeaders(w http.ResponseWriter) {
 	w.WriteHeader(http.StatusOK)
 }
 
+func writeCORSHttpError(w http.ResponseWriter, r *http.Request, msg string, code int) {
+	w.Header().Set("Access-Control-Allow-Origin", "https://dearborncodingclub.com")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+	w.Header().Set("Access-Control-Max-Age", "86400")
+	http.Error(w, msg, code)
+}
+
 func main() {
 	http.HandleFunc("/validate-token", func(w http.ResponseWriter, r *http.Request) {
 		// During CORS preflight, the browser sends an OPTIONS request to check if the server allows the request.
@@ -79,14 +88,14 @@ func main() {
 		var cfg Config
 		err := env.Parse(&cfg)
 		if err != nil {
-			http.Error(w, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// Retrieve the token from the Authorization header of the request.
 		tokenString := r.Header.Get("Authorization")
 		if tokenString == "" {
-			http.Error(w, "No token provided", http.StatusUnauthorized)
+			writeCORSHttpError(w, r, "No token provided", http.StatusUnauthorized)
 			return
 		}
 
@@ -98,16 +107,16 @@ func main() {
 			return []byte("potatosecret"), nil
 		})
 		if err != nil {
-			http.Error(w, "Error parsing JWT: "+err.Error(), http.StatusUnauthorized)
+			writeCORSHttpError(w, r, "Error parsing JWT: "+err.Error(), http.StatusUnauthorized)
 			return
 		}
 		if !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			writeCORSHttpError(w, r, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
-			http.Error(w, "Error parsing claims", http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error parsing claims", http.StatusInternalServerError)
 			return
 		}
 
@@ -129,7 +138,7 @@ func main() {
 		var cfg Config
 		err := env.Parse(&cfg)
 		if err != nil {
-			http.Error(w, "could build config"+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "could build config"+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -137,51 +146,51 @@ func main() {
 		var registerRequest RegisterRequest
 		err = json.NewDecoder(r.Body).Decode(&registerRequest)
 		if err != nil {
-			http.Error(w, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
 		}
 
 		// Create a database connection string using the Supabase environment variables.
 		connStr := fmt.Sprintf("postgresql://postgres.gxjlavvzckgdyjyuhgod:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
-			http.Error(w, "Error parsing request body: "+err.Error(), http.StatusNotFound)
+			writeCORSHttpError(w, r, "Error parsing request body: "+err.Error(), http.StatusNotFound)
 			return
 		}
 
 		// Check if the user already exists in the database.
 		rows, err := db.Query("SELECT * FROM ACCOUNTS_DCCUSER WHERE USERNAME = $1", registerRequest.Username)
 		if err != nil {
-			http.Error(w, "Error selecting from database: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error selecting from database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// If the user already exists, return an error.
 		if rows.Next() {
-			http.Error(w, "User already exists"+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "User already exists"+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		hashedPassword, err := HashPassword(registerRequest.Password)
 
 		if err != nil {
-			http.Error(w, "Error hashing password: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error hashing password: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		var id int
 		err = db.QueryRow("INSERT INTO ACCOUNTS_PROFILE (role, phone_number, email, address, about_me, leetcode_username) VALUES ('user', '', '', '', '', '') RETURNING id").Scan(&id)
 		if err != nil {
-			http.Error(w, "Error inserting into profile: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error inserting into profile: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		if err != nil {
-			http.Error(w, "Error getting last insert ID: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error getting last insert ID: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (username, password, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', $4, '2017-03-14')", registerRequest.Username, hashedPassword, registerRequest.Email, id)
 
 		if err != nil {
-			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -201,14 +210,14 @@ func main() {
 		var cfg Config
 		err := env.Parse(&cfg)
 		if err != nil {
-			http.Error(w, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error parsing environment variables: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
 		// Generate a refresh token.
 		refreshToken, err := GenerateRefreshToken()
 		if err != nil {
-			http.Error(w, "Error generating refresh token: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error generating refresh token: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -216,7 +225,7 @@ func main() {
 		var loginRequest LoginRequest
 		err = json.NewDecoder(r.Body).Decode(&loginRequest)
 		if err != nil {
-			http.Error(w, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Unable to decode response: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -236,7 +245,7 @@ func main() {
 
 		// If the user does not exist, return an error.
 		if !rows.Next() {
-			http.Error(w, "Wrong username or password", http.StatusNotFound)
+			writeCORSHttpError(w, r, "Wrong username or password", http.StatusNotFound)
 			return
 		}
 
@@ -244,7 +253,7 @@ func main() {
 		query := `INSERT INTO core_refreshtoken (token) VALUES ($1)`
 		_, err = db.Exec(query, refreshToken)
 		if err != nil {
-			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -252,7 +261,7 @@ func main() {
 		var id, username, password, lastLogin, isSuperUser, firstName, lastName, email, isStaff, isActive, dateJoined, profile_id, birthdate, bio string
 		err = rows.Scan(&id, &password, &lastLogin, &isSuperUser, &username, &firstName, &lastName, &email, &isStaff, &isActive, &dateJoined, &bio, &birthdate, &profile_id)
 		if err != nil {
-			http.Error(w, "Error scanning the database: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error scanning the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 		defer rows.Close()
@@ -260,7 +269,7 @@ func main() {
 		// Check if the provided password hash matches what is in the database.
 		validPassword := CheckPasswordHash(loginRequest.Password, password)
 		if !validPassword {
-			http.Error(w, "Wrong password", http.StatusNotFound)
+			writeCORSHttpError(w, r, "Wrong password", http.StatusNotFound)
 			return
 		}
 
@@ -268,7 +277,7 @@ func main() {
 		query = `INSERT INTO core_refreshtoken (token) VALUES ($1)`
 		_, err = db.Exec(query, refreshToken)
 		if err != nil {
-			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
@@ -290,7 +299,7 @@ func main() {
 		// Sign the JWT with the HMAC secret and convert it to a string.
 		tokenString, err := token.SignedString([]byte("potatosecret"))
 		if err != nil {
-			http.Error(w, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
 
