@@ -48,7 +48,8 @@ func GenerateRefreshToken() (string, error) {
 }
 
 func handlePreflight(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "https://dearborncodingclub.com")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	w.Header().Set("Access-Control-Max-Age", "86400")
@@ -56,7 +57,8 @@ func handlePreflight(w http.ResponseWriter, r *http.Request) {
 }
 
 func setBaseHeaders(w http.ResponseWriter) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Origin", "https://dearborncodingclub.com")
+	w.Header().Set("Access-Control-Allow-Credentials", "true")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 	w.Header().Set("Access-Control-Max-Age", "86400")
@@ -139,7 +141,7 @@ func main() {
 		}
 
 		// Create a database connection string using the Supabase environment variables.
-		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
+		connStr := fmt.Sprintf("postgresql://postgres.gxjlavvzckgdyjyuhgod:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			http.Error(w, "Error parsing request body: "+err.Error(), http.StatusNotFound)
@@ -165,8 +167,18 @@ func main() {
 			http.Error(w, "Error hashing password: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		var id int
+		err = db.QueryRow("INSERT INTO ACCOUNTS_PROFILE (role, phone_number, email, address, about_me, leetcode_username) VALUES ('user', '', '', '', '', '') RETURNING id").Scan(&id)
+		if err != nil {
+			http.Error(w, "Error inserting into profile: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if err != nil {
+			http.Error(w, "Error getting last insert ID: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
 
-		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (username, password, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', 1, '2017-03-14')", registerRequest.Username, hashedPassword, registerRequest.Email)
+		_, err = db.Exec("INSERT INTO ACCOUNTS_DCCUSER (username, password, email, is_superuser, first_name, last_name, is_staff, is_active, date_joined, bio, birthdate, profile_id, last_login) VALUES ($1, $2, $3, FALSE, 'test_name', 'test_name', FALSE, FALSE, '2017-03-14', 'test-bio', '2017-03-14', $4, '2017-03-14')", registerRequest.Username, hashedPassword, registerRequest.Email, id)
 
 		if err != nil {
 			http.Error(w, "Error querying the database: "+err.Error(), http.StatusInternalServerError)
