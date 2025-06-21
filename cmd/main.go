@@ -166,7 +166,7 @@ func main() {
 
 		// If the user already exists, return an error.
 		if rows.Next() {
-			writeCORSHttpError(w, r, "User already exists"+err.Error(), http.StatusInternalServerError)
+			writeCORSHttpError(w, r, "User already exists", http.StatusConflict)
 			return
 		}
 
