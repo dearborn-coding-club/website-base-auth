@@ -150,7 +150,7 @@ func main() {
 		}
 
 		// Create a database connection string using the Supabase environment variables.
-		connStr := fmt.Sprintf("postgresql://postgres.gxjlavvzckgdyjyuhgod:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres", cfg.Password)
+		connStr := fmt.Sprintf("postgresql://postgres.lnwnzuvjzjpmixenztyg:%s@fly-0-ewr.pooler.supabase.com:6543/postgres", cfg.Password)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			writeCORSHttpError(w, r, "Error parsing request body: "+err.Error(), http.StatusNotFound)
