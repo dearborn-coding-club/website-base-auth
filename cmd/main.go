@@ -21,12 +21,11 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 type Config struct {
-	Password     string `env:"SUPABASE_POSTGRESQL_PASSWORD,required"`
-	User         string `env:"SUPABASE_POSTGRESQL_USER,required"`
-	Host         string `env:"SUPABASE_POSTGRESQL_HOST,required"`
-	HostIsolated string `env:"SUPABASE_POSTGRESQL_HOST_ISOLATED,required"`
-	Port         string `env:"SUPABASE_POSTGRESQL_PORT,required"`
-	Name         string `env:"SUPABASE_POSTGRESQL_NAME,required"`
+	Password     string `env:"POSTGRESQL_PASSWORD,required"`
+	User         string `env:"POSTGRESQL_USER,required"`
+	HostIsolated string `env:"POSTGRESQL_HOST_ISOLATED,required"`
+	Port         string `env:"POSTGRESQL_PORT,required"`
+	Name         string `env:"POSTGRESQL_NAME,required"`
 	HmacSecret   string `env:"HMAC_SECRET,required"`
 }
 

@@ -12,12 +12,12 @@ cp .env.example .env
 Modify `.env` as needed:
 
 ```bash
-export SUPABASE_POSTGRESQL_PASSWORD=password
+export POSTGRESQL_PASSWORD=password
+export POSTGRESQL_NAME=db_name
+export POSTGRESQL_USER=db_user
+export POSTGRESQL_HOST_ISOLATED=db_host.some_website.com
+export POSTGRESQL_PORT=5432
 export HMAC_SECRET=your_hmac_secret_here
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_NAME=postgres
-export DB_USER=postgres
 ```
 
 Run source to set the env for the terminal
