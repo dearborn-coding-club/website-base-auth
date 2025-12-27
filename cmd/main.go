@@ -235,7 +235,7 @@ func main() {
 		}
 
 		// Create a database connection string using the Supabase environment variables.
-		connStr := fmt.Sprintf("postgresql://postgres.gxjlavvzckgdyjyuhgod:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres", cfg.Password)
+		connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", cfg.User, cfg.Password, cfg.HostIsolated, cfg.Port, cfg.Name)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
