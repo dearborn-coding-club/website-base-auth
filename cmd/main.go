@@ -301,7 +301,7 @@ func main() {
 		})
 
 		// Sign the JWT with the HMAC secret and convert it to a string.
-		tokenString, err := token.SignedString([]byte("potatosecret"))
+		tokenString, err := token.SignedString([]byte(cfg.HmacSecret))
 		if err != nil {
 			writeCORSHttpError(w, r, "Error generating JWT: "+err.Error(), http.StatusInternalServerError)
 			return
