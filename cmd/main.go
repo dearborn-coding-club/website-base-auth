@@ -21,8 +21,13 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 type Config struct {
-	Password   string `env:"SUPABASE_POSTGRESQL_PASSWORD,required"`
-	HmacSecret string `env:"HMAC_SECRET,required"`
+	Password     string `env:"SUPABASE_POSTGRESQL_PASSWORD,required"`
+	User         string `env:"SUPABASE_POSTGRESQL_USER,required"`
+	Host         string `env:"SUPABASE_POSTGRESQL_HOST,required"`
+	HostIsolated string `env:"SUPABASE_POSTGRESQL_HOST_ISOLATED,required"`
+	Port         string `env:"SUPABASE_POSTGRESQL_PORT,required"`
+	Name         string `env:"SUPABASE_POSTGRESQL_NAME,required"`
+	HmacSecret   string `env:"HMAC_SECRET,required"`
 }
 
 type RegisterRequest struct {
@@ -150,7 +155,7 @@ func main() {
 		}
 
 		// Create a database connection string using the Supabase environment variables.
-		connStr := fmt.Sprintf("postgresql://postgres.gxjlavvzckgdyjyuhgod:%s@aws-0-us-west-1.pooler.supabase.com:6543/postgres", cfg.Password)
+		connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", cfg.User, cfg.Password, cfg.HostIsolated, cfg.Port, cfg.Name)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			writeCORSHttpError(w, r, "Error parsing request body: "+err.Error(), http.StatusNotFound)
