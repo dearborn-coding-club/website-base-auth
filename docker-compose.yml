@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  auth-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - SUPABASE_POSTGRESQL_PASSWORD=${SUPABASE_POSTGRESQL_PASSWORD}
+      - HMAC_SECRET=${HMAC_SECRET}
+    restart: unless-stopped
+    networks:
+      - auth-network
+
+networks:
+  auth-network:
+    driver: bridge
