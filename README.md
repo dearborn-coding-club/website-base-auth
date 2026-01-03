@@ -26,8 +26,13 @@ Run source to set the env for the terminal
 source .env
 ```
 
-### Getting started
-1. To run the server, ensure that you have `Go` installed locally on your system.
+### Getting started with Docker
+1. To run the server, ensure that you have [Docker desktop](https://www.docker.com/get-started/) installed locally.
+2. Log in to docker with `docker login`.
+3. Spin up composed container with `docker compose up --build`.
+
+#### Getting started without Docker
+1. To run the server, ensure that you have [`Go`](https://go.dev/doc/install) installed locally on your system.
 2. Run `go mod vendor` from the root director.
 3. Run `go run ./cmd/main.go` to spin up the server.
 
