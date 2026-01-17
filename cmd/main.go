@@ -154,7 +154,7 @@ func main() {
 		}
 
 		// Create a database connection string using the Supabase environment variables.
-		connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", cfg.User, cfg.Password, cfg.HostIsolated, cfg.Port, cfg.Name)
+		connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", cfg.User, cfg.Password, cfg.HostIsolated, cfg.Port, cfg.Name)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			writeCORSHttpError(w, r, "Error parsing request body: "+err.Error(), http.StatusNotFound)
@@ -234,7 +234,7 @@ func main() {
 		}
 
 		// Create a database connection string using the Supabase environment variables.
-		connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s", cfg.User, cfg.Password, cfg.HostIsolated, cfg.Port, cfg.Name)
+		connStr := fmt.Sprintf("postgresql://%s:%s@%s:%s/%s?sslmode=disable", cfg.User, cfg.Password, cfg.HostIsolated, cfg.Port, cfg.Name)
 		db, err := sql.Open("postgres", connStr)
 		if err != nil {
 			log.Fatalf("Unable to execute query: %v\n", err)
